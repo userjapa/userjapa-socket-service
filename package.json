@@ -1,0 +1,21 @@
+{
+  "name": "userjapa-socket-service",
+  "version": "1.0.0",
+  "description": "userJapa Socket Service",
+  "main": "index.js",
+  "scripts": {
+    "start": "node .",
+    "dev": "nodemon ."
+  },
+  "dependencies": {
+    "nedb": "^1.8.0",
+    "socket.io": "^2.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.4"
+  },
+  "repository": "https://github.com/userjapa/userjapa-socket-service",
+  "author": "userJapa",
+  "license": "MIT",
+  "private": false
+}
