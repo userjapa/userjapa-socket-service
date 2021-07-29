@@ -52,7 +52,7 @@ class Database {
 
   update (_id, data) {
     return new Promise((resolve, reject) => {
-      this.database.update(data, { _id }, {}, (err, numReplaced) => {
+      this.database.update({ _id }, data, {}, (err, numReplaced) => {
         if (err)
           return reject(err)
 

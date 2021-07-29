@@ -1,4 +1,4 @@
-const io   = require('socket.io')
+const io = require('socket.io')
 
 const Database = require('./../database')
 
@@ -8,6 +8,8 @@ module.exports = app => {
   const room = io(app, { path: '/socket/media-stream' })
 
   room.on('connection', socket => {
+    let timeout = null
+
     socket.on('keep_alive', () => {
       if (timeout)
         clearTimeout(timeout)
@@ -29,15 +31,16 @@ module.exports = app => {
             members: [ socket.id ]
           })
 
-          socket.emit('room_created', { room_key: doc.room_key, members: doc.members, type: doc.type })
+          socket.emit('room_created')
         } else {
           const doc = await roomDb.insert({
             room_key,
             type,
-            owner: socket.id
+            owner: socket.id,
+            members: [ socket.id ]
           })
 
-          socket.emit('room_created', { room_key: doc.room_key, type: doc.type })
+          socket.emit('room_created')
         }
       } catch (error) {
         socket.emit('create_failed')
@@ -54,12 +57,14 @@ module.exports = app => {
 
         switch (doc.type) {
           case 'stream':
-            await roomDb.update({ $push: { members: socket.id } })
 
+            await roomDb.update(doc._id, { $push: { members: socket.id } })
+
+            socket.emit('joined', doc.type)
             socket.to(doc.owner).emit('joined', socket.id)
             break
           case 'conference':
-            await roomDb.update({ $push: { members: socket.id } })
+            await roomDb.update(doc._id, { $push: { members: socket.id } })
 
             for (const to of doc.members) {
               socket.to(to).emit('joined', socket.id)
@@ -77,14 +82,14 @@ module.exports = app => {
 
     socket.on('make_offer', ({ to, offer }) => {
       socket.to(to).emit('offer_made', {
-        socket: socket.id,
+        from: socket.id,
         offer: offer
       })
     })
 
     socket.on('make_answer', ({ to, answer }) => {
       socket.to(to).emit('answer_made', {
-        socket: socket.id,
+        from: socket.id,
         answer: answer
       })
     })
@@ -103,9 +108,21 @@ module.exports = app => {
               for (const to of doc.members) {
                 room.to(to).emit('left', socket.id)
               }
-            }
 
-            await roomDb.update(doc._id, { $pull: { members: socket.id } })
+              await roomDb.update(doc._id, { $pull: { members: socket.id } })
+            } else if (doc.type == 'stream') {
+              if (socket.id == doc.owner) {
+                for (const to of doc.members) {
+                  room.to(to).emit('disconnected')
+                }
+
+                await roomDb.remove(doc._id)
+              } else {
+                room.to(doc.owner).emit('disconnected', socket.id)
+
+                await roomDb.update(doc._id, { $pull: { members: socket.id } })
+              }
+            }
           } else {
             await roomDb.remove(doc._id)
           }
