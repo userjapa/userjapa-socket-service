@@ -6,7 +6,7 @@
         cors       = require('cors')
 
   // Setting Port
-  let PORT = process.env.PORT || (process.env.ENV == 'production' ? 5000 : 8082)
+  let PORT = process.env.PORT || (process.env.NODE_ENV == 'production' ? 5000 : 8082)
 
   try {
     // Create express app
